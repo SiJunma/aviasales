@@ -10,11 +10,12 @@ const formSearch = document.querySelector('.form-search'),
 const citiesApi = 'http://api.travelpayouts.com/data/ru/cities.json',
       proxy = 'https://cors-anywhere.herokuapp.com/',
       API_KEY = '481fac61cd22564d978b8acf86176d6a',
-      calendar = 'http://min-prices.aviasales.ru/calendar_preload';
+      calendar = 'http://min-prices.aviasales.ru/calendar_preload',
+      MAX_COUNT = 5;
 
 let city = [];
 
-const getData = (url, callback) => {
+const getData = (url, callback, reject = console.error) => {
     const request = new XMLHttpRequest();
     request.open('GET', url);
     request.addEventListener('readystatechange', () => {
@@ -23,9 +24,10 @@ const getData = (url, callback) => {
         if (request.status === 200) {
             callback(request.response);
         } else {
-            console.error(request.status);
+            reject(request.status);
         }
     });
+    
     request.send();
 };
 
@@ -77,6 +79,24 @@ const getChanges = (num) => {
     }
 };
 
+const getLinkAviasalec = (data) => {
+    let link = 'https://www.aviasales.ua/search/';
+
+    link += data.origin;
+    const date = new Date(data.depart_date);
+
+    const day = date.getDate();
+    link += day < 10 ? '0' + day : day;
+
+    const month = date.getMonth() + 1;
+    link += month < 10 ? '0' + month : month;
+
+    link += data.destination;
+    link += '1';
+
+    return link;
+};
+
 const createCard = (data) => {
     const ticket = document.createElement('article');
     ticket.classList.add('ticket');
@@ -88,7 +108,7 @@ const createCard = (data) => {
             <h3 class="agent">${data.gate}</h3>
             <div class="ticket__wrapper">
                 <div class="left-side">
-                    <a href="https://www.aviasales.ru/search/" class="button button__buy">Купить
+                    <a href="${getLinkAviasalec(data)}" ​target="_blank" class="button button__buy">Купить
                         за ${data.value}₽</a>
                 </div>
                 <div class="right-side">
@@ -132,7 +152,7 @@ const renderCheapYear = (cheapTickets) => {
     cheapTickets.sort((a, b) => a.value - b.value);
 
     if (cheapTickets.length > 1) {
-        for (i = 0; i < 5; i++) {
+        for (let i = 0; i < cheapTickets.length && i < MAX_COUNT; i++) {
             const ticket = createCard(cheapTickets[i]);
             otherCheapTickets.append(ticket);
         }
@@ -195,6 +215,9 @@ formSearch.addEventListener('submit', (evt) => {
 
         getData(calendar + requestData, (response) => {
             renderCheap(response, formData.when);
+        }, (error) => {
+            alert('В этом направлении рейсов нет');
+            console.log('Ошибка', error)
         });
     } else {
         alert('Введите корректное название города');
@@ -202,9 +225,7 @@ formSearch.addEventListener('submit', (evt) => {
 });
 
 getData(proxy + citiesApi, (data) => {
-    city = JSON.parse(data).filter((item) => {
-        return item.name;
-    });
+    city = JSON.parse(data).filter(item => item.name);
 
     city.sort((a, b) => {
         if (a.name > b.name) {
@@ -215,6 +236,7 @@ getData(proxy + citiesApi, (data) => {
         }
         return 0;
       });
+      
 });
 
 //Новый формат функции с одним return и одним параметром:
